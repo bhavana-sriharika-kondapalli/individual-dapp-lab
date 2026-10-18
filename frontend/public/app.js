@@ -232,7 +232,9 @@ async function submitRegistration() {
     statusElement.textContent =
       "Transaction failed: " + (error.shortMessage ?? error.message);
 
-    console.error(error);
+    console.error("FULL REGISTER ERROR:", error);
+    console.error("CONTRACT ERROR NAME:", error.cause?.data?.errorName);
+    console.error("ERROR DETAILS:", error.details);
   } finally {
     submitButton.disabled = false;
   }
