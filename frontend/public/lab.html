@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Individual DApp Lab - Chuck and Verify</title>
+</head>
+<body>
+  <h1>Chuck and Verify - Individual DApp Lab</h1>
+
+  <h2>DIDLab Blockchain Network</h2>
+  <p id="network">Checking blockchain connection...</p>
+
+  <h2>Wallet Connection</h2>
+  <p id="account">Wallet: Not connected</p>
+  <button id="connect">Connect MetaMask</button>
+
+  <h2>Contract</h2>
+  <p>0x20bA1c398CD59b05dA4427162bdA7F26d5AB802e</p>
+
+  <h2>Actions</h2>
+  <button id="submit" disabled>Submit Transaction</button>
+  <pre id="transactionStatus">No transaction submitted yet.</pre>
+  <h3>Activity 8 - On-chain Revert Test</h3>
+  <button id="revertTest">Test On-chain Revert</button>
+  <pre id="revertStatus">Not tested yet.</pre>
+  <h3>Activity 9 - Live Contract Events</h3>
+  <p id="eventStatus">Waiting for blockchain events...</p>
+  <pre id="eventLog">No events detected yet.</pre>
+  <h3>Activity 10 - Revert and State Verification</h3>
+  <button id="verifyRevert">Verify Reverted Transaction</button>
+  <pre id="verifyStatus">Not verified yet.</pre>
+  <h3>Activity 6 - Transaction Simulation</h3>
+  <button id="simulate">Simulate Batch Registration</button>
+  <pre id="simulation">Not simulated yet.</pre>
+  <h2>Current Beef Batch State</h2>
+  <p id="batchLabel">Batch ID: BEEF-001</p>
+  <pre id="state">Loading batch data...</pre>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
+
