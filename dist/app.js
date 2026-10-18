@@ -187,7 +187,7 @@ async function submitRegistration() {
     return;
   }
 
-  const newBatchId = padHex(stringToHex("IND-BEEF-005"), {
+  const newBatchId = padHex(stringToHex("IND-BEEF-006"), {
     size: 32,
     dir: "right"
   });
