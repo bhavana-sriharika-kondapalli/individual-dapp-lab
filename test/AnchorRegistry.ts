@@ -4,6 +4,15 @@ import assert from "node:assert/strict";
 import { network } from "hardhat";
 import { keccak256, stringToHex, zeroHash } from "viem";
 
+type AnchorRecord = {
+  digest: `0x${string}`;
+  cid: string;
+  submitter: `0x${string}`;
+  submittedAt: bigint;
+  verifier: `0x${string}`;
+  verifiedAt: bigint;
+  verified: boolean;
+};
 const { viem } = await network.connect();
 
 const ADMIN = keccak256(stringToHex("ADMIN"));
@@ -93,7 +102,7 @@ describe("AnchorRegistry — Lab 2 Activity 6", () => {
       { account: submitter.account }
     );
 
-    const record = await registry.read.get([recordId]);
+    const record = (await registry.read.get([recordId])) as AnchorRecord;
 
     assert.equal(record.digest, digest);
     assert.equal(record.cid, cid);
@@ -201,7 +210,7 @@ describe("AnchorRegistry — Lab 2 Activity 6", () => {
       { account: verifier.account }
     );
 
-    const record = await registry.read.get([recordId]);
+    const record = (await registry.read.get([recordId])) as AnchorRecord;
 
     assert.equal(
   record.verifier.toLowerCase(),

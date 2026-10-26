@@ -1,6 +1,15 @@
 import { network } from "hardhat";
 import { keccak256, stringToHex } from "viem";
 
+type AnchorRecord = {
+  digest: `0x${string}`;
+  cid: string;
+  submitter: `0x${string}`;
+  submittedAt: bigint;
+  verifier: `0x${string}`;
+  verifiedAt: bigint;
+  verified: boolean;
+};
 const { viem } = await network.create({
   network: "didlabVerifier",
 });
@@ -16,7 +25,7 @@ const recordId = keccak256(stringToHex("BEEF-001"));
 
 console.log("Verifier wallet:", verifier.account.address);
 
-const before = await registry.read.get([recordId]);
+const before = (await registry.read.get([recordId])) as AnchorRecord;
 
 console.log("Current verifier:", before.verifier);
 
@@ -49,7 +58,7 @@ const receipt = await publicClient.waitForTransactionReceipt({
 console.log("Transaction status:", receipt.status);
 console.log("Block number:", receipt.blockNumber.toString());
 
-const after = await registry.read.get([recordId]);
+const after = (await registry.read.get([recordId])) as AnchorRecord;
 
 console.log("Verified by:", after.verifier);
 console.log("Verified at:", after.verifiedAt.toString());
