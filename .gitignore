@@ -2,3 +2,24 @@ node_modules/
 .env
 .env.*
 frontend/public/team-page-backup.html
+# Dependencies and Hardhat generated files
+node_modules/
+artifacts/
+cache/
+dist/
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+*.keystore
+keystore.json
+
+# Private encryption and recovery files
+retrieved.bin
+*.recovery.json
+*recovery*.json
+
+# Local backups
+frontend/public/team-page-backup.html

@@ -36,7 +36,62 @@
   <h2>Current Beef Batch State</h2>
   <p id="batchLabel">Batch ID: BEEF-001</p>
   <pre id="state">Loading batch data...</pre>
+   
+  <hr>
 
+<section id="anchorRegistryLab">
+  <h2>Guided Lab 2 — AnchorRegistry</h2>
+
+  <p>
+    Contract:
+    <code>0xce25f3fb25076c5f667813e6979c1a866bd39e0f</code>
+  </p>
+
+  <h3>Wallet and Roles</h3>
+  <button id="anchorConnect">Connect Wallet for AnchorRegistry</button>
+  <p id="anchorWallet">Wallet not connected.</p>
+  <p id="anchorRoles">Roles not checked.</p>
+
+  <div id="anchorPanel" hidden>
+    <h3>SUBMITTER — Anchor Record</h3>
+
+    <label for="anchorRecordId">Record ID:</label>
+    <input id="anchorRecordId" value="BEEF-002">
+
+    <label for="anchorDigest">SHA-256 Digest:</label>
+    <input id="anchorDigest" placeholder="0x + 64 hexadecimal characters">
+
+    <label for="anchorCid">Encrypted IPFS CID:</label>
+    <input id="anchorCid" placeholder="IPFS CID">
+
+    <button id="anchorSubmit">Anchor Record</button>
+    <pre id="anchorSubmitStatus">Ready.</pre>
+  </div>
+
+  <div id="verifyPanel" hidden>
+    <h3>VERIFIER — Verify Record</h3>
+
+    <label for="verifyRecordId">Record ID:</label>
+    <input id="verifyRecordId" value="BEEF-001">
+
+    <button id="anchorVerify">Verify Record</button>
+    <pre id="anchorVerifyStatus">Ready.</pre>
+  </div>
+
+  <h3>Public Record Lookup</h3>
+
+  <label for="lookupRecordId">Record ID:</label>
+  <input id="lookupRecordId" value="BEEF-001">
+
+  <button id="anchorLookup">Load Record</button>
+
+  <pre id="anchorRecordDetails"
+       style="white-space:pre-wrap;overflow-wrap:anywhere;">
+    No record loaded.
+  </pre>
+</section>
+
+<script type="module" src="./anchor-ui.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
