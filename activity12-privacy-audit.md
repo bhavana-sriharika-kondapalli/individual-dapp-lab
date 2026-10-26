@@ -56,5 +56,32 @@ The plaintext report is not intentionally published on-chain. The recovery infor
 - Frontend role-panel visibility bypass: demonstrated.
 - Smart contract authorization remains independent of frontend visibility.
 
+## Field-by-Field Privacy Audit
+
+| Field | Where It Appears | Could Identify a Person? | Verdict |
+|---|---|---|---|
+| recordId | Calldata, mapping key, event topic | Low risk for BEEF-001, a business batch identifier; predictable identifiers can still reveal activity | Acceptable for non-personal batch IDs |
+| digest | Calldata, contract state, event topic | Not directly; it hashes encrypted ciphertext | Acceptable |
+| cid | Calldata, contract state, event data | Not directly, but links to retrievable encrypted content | Acceptable with encryption |
+| submitter / msg.sender | Contract state, transactions, event topics | Yes, wallet activity may be linked to a person or organization | Pseudonymous; monitor metadata exposure |
+| submittedAt | Contract state, block timestamp | Indirectly, when combined with wallet activity | Acceptable with metadata risk |
+| verifier | Contract state, event topic | Yes, may identify an inspector or organization | Pseudonymous; monitor metadata exposure |
+| verifiedAt | Contract state, event data | Indirectly, through timing and wallet correlation | Acceptable with metadata risk |
+| Role identifiers (ADMIN, SUBMITTER, VERIFIER) | Contract state, role-management calldata and events | Not individually, but reveal authorization structure | Acceptable |
+| Role account addresses | Contract state, role-management calldata and events | Yes, addresses can be linked to participants | Acceptable with pseudonymity limitations |
+| Role-granting administrator address | Transactions and role-management events | Yes, identifies the wallet controlling role assignments | Acceptable with administrative security controls |
+
+## Record Identifier Derivation
+
+The record ID is generated using keccak256 of the business batch identifier BEEF-001.
+
+This identifier represents a beef supply-chain batch rather than a person's name, student ID, or personal record. It is suitable for this demonstration, although predictable business identifiers can be guessed and correlated with public transactions.
+
+## Overall Privacy Verdict
+
+No plaintext inspection document is intentionally written to blockchain storage, calldata, or events. The encrypted ciphertext is stored off-chain through IPFS.
+
+The design is acceptable for this lab, with residual risks from public wallet addresses, timestamps, role assignments, predictable batch identifiers, and possible future exposure of encryption keys.
+
 ## Conclusion
 The project separates encrypted off-chain documents from publicly verifiable on-chain evidence. The design supports integrity checking and independent verification while reducing plaintext exposure. However, public blockchain metadata still creates privacy risks, and encryption key management remains essential.
