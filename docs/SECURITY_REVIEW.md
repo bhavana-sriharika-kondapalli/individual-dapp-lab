@@ -46,13 +46,17 @@ This demonstrated how missing authorization checks can allow an ordinary user to
 
 ### 3.2 Reentrancy Experiment
 
-The next exercise investigated a withdrawal function that transferred funds before updating the sender's recorded balance.
+The next exercise focused on a withdrawal function that transferred ETH before updating the sender's balance. This creates a reentrancy risk because a receiving contract can call the withdrawal function again while the original transaction is still running.
 
-This ordering is dangerous because the receiving contract may execute additional code before the original withdrawal finishes.
+I tested this vulnerability using the Reenterer contract on the local Hardhat network. During the first attempt, Solidity's arithmetic checks caused the transaction to revert. To demonstrate the underlying vulnerability, I updated the intentionally insecure VulnerableVault contract to use an unchecked balance subtraction.
 
-I tested this behavior using the Reenterer contract. The attempted reentrant withdrawal reverted because Solidity's arithmetic checks prevented the repeated balance deductions from completing.
+After this change, the reentrancy attack succeeded. The attacker deposited 1 test ETH and received 2 test ETH through repeated withdrawal calls. The vault initially contained 5 test ETH and had 4 test ETH remaining after the attack.
 
-Although the attempted exploit did not successfully drain funds, the exercise demonstrated why contract state should be updated before interacting with an external address.
+This demonstrated that sending funds before updating internal balances can allow an attacker to withdraw more than their recorded balance. The exercise also showed why Solidity's arithmetic checks can affect the outcome of an exploit.
+
+The vulnerability was addressed separately in SafeVault by updating the balance before transferring ETH, using a reentrancy guard, and checking whether the external transfer succeeded.
+
+All attack demonstrations were performed locally. The intentionally vulnerable contract was not deployed to DIDLab.
 
 ### 3.3 Testing the Improved Vault
 
@@ -111,34 +115,68 @@ These existing protections were retained during the security improvements.
 
 ## 5. Findings and Verification Results
 
-| Finding | Observation | Verification outcome |
-|---|---|---|
-| AC-01 | The last administrator could revoke their own ADMIN permission. | Reproduced and addressed |
-| AC-02 | Unsupported role identifiers were accepted. | Reproduced and addressed |
-| AC-03 | Administrative role assignments accepted the zero address. | Reproduced and addressed |
-| IV-01 | An empty IPFS CID could be submitted. | Reproduced and addressed |
-| IV-02 | A zero-valued record identifier could be submitted. | Reproduced and addressed |
-| IV-03 | Arbitrary CID strings were accepted. | Reproduced; complete format-validation status requires confirmation |
 
-The original behavior was examined through adversarial tests, and the targeted fixes were checked using additional regression tests.
+I identified six security concerns while reviewing the original AnchorRegistry contract. I investigated these issues using adversarial tests and checked the implemented fixes using regression tests.
+
+| Finding | Vulnerability Class | Severity | Observation | Status |
+|---|---|---|---|---|
+| AC-01 | Access control | High | The last administrator could revoke their own ADMIN role, leaving the contract without an administrator. | Fixed |
+| AC-02 | Access control | Medium | The contract accepted unsupported role identifiers, potentially creating unintended permissions. | Fixed |
+| AC-03 | Access control | Medium | An administrator could assign roles to the zero address, creating unusable role assignments. | Fixed |
+| IV-01 | Input validation | Low | The anchor function accepted an empty IPFS CID. | Fixed |
+| IV-02 | Input validation | Medium | The anchor function accepted a zero-valued record identifier. | Fixed |
+| IV-03 | Input validation | Low | The contract accepted arbitrary CID strings without validating their format. | Accepted residual risk |
+
+The original contract's behavior was investigated through adversarial testing. After applying the fixes, I ran the security regression tests to verify that the corrected contract rejected the previously accepted invalid operations.
+
+Five findings were addressed in the updated contract. IV-03 remains unresolved because the application currently treats the CID as a reference string rather than verifying its structure on-chain. I documented this limitation as an accepted risk for the lab implementation. Future improvements could include CID format checks in the application and additional off-chain validation.
+
+The regression tests confirmed that the implemented protections worked without breaking normal record submission and verification.
 
 ## 6. AI-Assisted Review
 
-I also used an AI-assisted audit to examine the contract for possible security problems.
+I used ChatGPT to perform an initial security review of the original AnchorRegistry contract. The review examined access control, input validation, reentrancy, unchecked external calls, and state-ordering issues.
 
-Instead of treating every AI-generated observation as correct, I compared the findings with the Solidity source and created tests to investigate the reported behavior.
+I saved the initial AI-generated findings in `docs/AI_AUDIT_RAW.md` and documented my verification work in `docs/AI_AUDIT_VERIFICATION.md`.
 
-The original AI review was preserved in:
+### 6.1 Verification of AI Findings
 
-`docs/AI_AUDIT_RAW.md`
+The AI identified six potential issues. I investigated them using the contract source and adversarial tests.
 
-My verification work was recorded in:
+| Finding | AI Observation | Verification Result |
+|---|---|---|
+| AC-01 | The last administrator could revoke their own ADMIN role. | Confirmed; fixed |
+| AC-02 | Unsupported role identifiers were accepted. | Confirmed; fixed |
+| AC-03 | Roles could be granted to the zero address. | Confirmed; fixed |
+| IV-01 | Empty IPFS CIDs were accepted. | Confirmed; fixed |
+| IV-02 | Zero-valued record identifiers were accepted. | Confirmed; fixed |
+| IV-03 | Arbitrary CID strings were accepted. | Confirmed; accepted residual risk |
 
-`docs/AI_AUDIT_VERIFICATION.md`
+The initial contract allowed the six reported behaviors. Five were addressed through security improvements, while CID format validation remains an acknowledged limitation.
 
-Six tests were completed successfully during this verification stage.
+### 6.2 Findings That Were Not Vulnerabilities
 
-The exercise showed that AI can help identify areas worth investigating, but its findings still need independent confirmation. A reported issue should be supported by contract behavior, a reproducible test, or a clear explanation based on the source code.
+The AI also examined reentrancy, unchecked external calls, and state ordering.
+
+It did not identify a direct reentrancy vulnerability because AnchorRegistry does not transfer ETH or call untrusted external contracts in its reviewed functions.
+
+Similarly, it did not identify unchecked external calls. The existing verification logic already checked whether records existed, prevented repeated verification, and required an independent verifier.
+
+The AI also observed that historical records remain stored after role revocation. I treated this as expected behavior for an append-only record system rather than a confirmed vulnerability.
+
+### 6.3 What the AI Missed
+
+When I compared the AI findings with my manual review, I did not identify an additional confirmed vulnerability that the AI had completely missed.
+
+However, the AI review did not prove that every possible security issue had been discovered. Its findings were based on source-code analysis rather than executing attacks.
+
+The manual tests provided stronger evidence by showing which behaviors were actually possible and whether the updated contract prevented them.
+
+### 6.4 What I Learned from the AI Audit
+
+The AI helped identify authorization and input-validation weaknesses that deserved further investigation. However, I still needed to examine the contract, reproduce the reported behavior, and evaluate whether each finding was relevant to the application.
+
+This exercise showed me that AI can support a security audit, but its output should not be treated as proof without independent verification.
 
 ## 7. Security Improvements
 
@@ -177,7 +215,15 @@ Following local testing, I deployed the updated AnchorRegistry contract to the D
 **Updated contract address:**
 
 `0xa0fffd4c2774b3497132059e1e4cf38594d7f289`
+**Deployment transaction hash:**
 
+`0x4058323d745d0a4c9b9e3501228ea30614178b9a5ad674cc0e1e0dc4a079581f`
+
+**Deployment block:** 6909077
+
+**Deployment status:** Success
+
+The DIDLab block explorer confirmed that the updated AnchorRegistry contract was successfully deployed.
 The deployment completed successfully, and the deploying account was confirmed to have the ADMIN role.
 
 I also updated the frontend configuration to use the new contract address so that the application would interact with the revised implementation.
@@ -210,15 +256,15 @@ This confirmed that the updated contract supported both record submission and in
 
 ## 10. Remaining Security Considerations
 
-The completed tests covered several important security scenarios, but they do not guarantee that every possible vulnerability has been eliminated.
+Although all 35 tests passed, some security risks remain.
 
-Administrative accounts remain sensitive because anyone who gains control of an administrator's private key could potentially exercise that account's permissions.
+**CID Validation:** AnchorRegistry still accepts arbitrary nonempty CID strings. I accepted this as a low-severity risk for the lab because full CID validation is not implemented. Future improvements could validate CID formats before submission.
 
-The application also depends on off-chain content. A blockchain digest can help detect changes to referenced data, but it cannot independently establish that the original document was truthful.
+**ADMIN Key Management:** The deploying account holds the ADMIN role and manages other users' permissions. The project uses Hardhat configuration variables for signing credentials. Private keys should be kept out of GitHub and accessible only to authorized users. If an ADMIN key is compromised, an attacker could grant or revoke permissions. A multisignature wallet would provide stronger protection in a production system.
 
-Additionally, CID validation and the availability of off-chain content require careful consideration. Even a correctly formatted CID does not guarantee that the referenced content remains accessible.
+**Off-Chain Data:** Blockchain records can help detect document changes, but they cannot guarantee that the original information is accurate or that IPFS files remain available.
 
-Future development should include additional testing, review of deployment permissions, and checks to ensure that the frontend continues using the correct contract address and interface.
+These risks are documented because passing security tests does not guarantee that every possible vulnerability has been eliminated.
 
 ## 11. Personal Learning and Conclusion
 

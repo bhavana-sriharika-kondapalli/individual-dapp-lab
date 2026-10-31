@@ -17,10 +17,16 @@ contract VulnerableVault {
     }
 
     function withdraw(uint256 amount) external {
-        require(balances[msg.sender] >= amount, "insufficient");
-        (bool ok, ) = msg.sender.call{value: amount}("");
+    require(balances[msg.sender] >= amount, "insufficient");
+
+    // Intentionally vulnerable: external call happens before balance update.
+    (bool ok, ) = msg.sender.call{value: amount}("");
+
+    // Deliberately disable underflow checks for the local attack demonstration.
+    unchecked {
         balances[msg.sender] -= amount;
     }
+}
 
     function setOwner(address newOwner) external {
         owner = newOwner;

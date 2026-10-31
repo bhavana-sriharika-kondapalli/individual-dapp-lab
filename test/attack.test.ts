@@ -56,19 +56,16 @@ describe("Guided Lab 3 - VulnerableVault attacks", () => {
     console.log("Unauthorized owner:", newOwner);
   });
   
-  it("Activity 3: reentrancy attempt is reverted by arithmetic checks", async () => {
-    const [deployer, victim, attacker] =
-      await viem.getWalletClients();
+  it("Activity 3: reentrancy attack drains more than attacker deposited", async () => {
+    const [, victim, attacker] = await viem.getWalletClients();
 
     const vault = await viem.deployContract("VulnerableVault");
 
-    // Victim deposits 5 simulated ETH.
     await vault.write.deposit([], {
       account: victim.account,
       value: parseEther("5"),
     });
 
-    // Deploy attacker contract targeting the vault.
     const reenterer = await viem.deployContract("Reenterer", [
       vault.address,
     ]);
@@ -81,26 +78,29 @@ describe("Guided Lab 3 - VulnerableVault attacks", () => {
 
     assert.equal(vaultBefore, parseEther("5"));
 
-    // Reentrant withdrawal attempts to withdraw twice
-    // before the attacker's balance is updated.
-    await assert.rejects(
-      async () => {
-        await reenterer.write.attack([], {
-          account: attacker.account,
-          value: parseEther("1"),
-        });
-      }
-    );
+    await reenterer.write.attack([], {
+      account: attacker.account,
+      value: parseEther("1"),
+    });
 
-    // Reverted transactions must not change balances.
+    const attackerBalance = await publicClient.getBalance({
+      address: reenterer.address,
+    });
+
     const vaultAfter = await publicClient.getBalance({
       address: vault.address,
     });
 
-    assert.equal(vaultAfter, vaultBefore);
+    assert.ok(
+      attackerBalance > parseEther("1"),
+      "Attacker should receive more than the amount deposited"
+    );
 
-    console.log("Reentrancy attempt reverted");
-    console.log("Vault balance unchanged:", vaultAfter.toString());
+    assert.ok(vaultAfter < vaultBefore);
+
+    console.log("Reentrancy attack succeeded");
+    console.log("Vault before:", vaultBefore.toString());
+    console.log("Vault after:", vaultAfter.toString());
+    console.log("Attacker contract balance:", attackerBalance.toString());
   });
-
 });
