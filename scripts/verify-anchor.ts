@@ -18,10 +18,10 @@ const [verifier] = await viem.getWalletClients();
 
 const registry = await viem.getContractAt(
   "AnchorRegistry",
-  "0xce25f3fb25076c5f667813e6979c1a866bd39e0f"
+  "0xa0fffd4c2774b3497132059e1e4cf38594d7f289"
 );
 
-const recordId = keccak256(stringToHex("BEEF-001"));
+const recordId = keccak256(stringToHex("BEEF-SECURITY-TEST-001"));
 
 console.log("Verifier wallet:", verifier.account.address);
 
@@ -43,7 +43,7 @@ if (verifier.account.address.toLowerCase() !== expectedVerifier) {
   throw new Error("Wrong verifier wallet. No transaction sent.");
 }
 
-console.log("Verifying BEEF-001...");
+console.log("Verifying BEEF-SECURITY-TEST-001...");
 
 const txHash = await registry.write.verify([recordId]);
 

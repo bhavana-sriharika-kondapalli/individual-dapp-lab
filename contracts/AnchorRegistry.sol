@@ -1,14 +1,13 @@
 
- // SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-/// @notice Anchors commitments to off-chain content under role-based authorization.
-///         Content lives off chain. Record identifiers must never be derived
-///         from personal data, hashed or otherwise.
+/// @notice Stores document commitments with role-based authorization.
+/// @dev Full documents remain off-chain.
 contract AnchorRegistry {
-    bytes32 public constant ADMIN     = keccak256("ADMIN");
+    bytes32 public constant ADMIN = keccak256("ADMIN");
     bytes32 public constant SUBMITTER = keccak256("SUBMITTER");
-    bytes32 public constant VERIFIER  = keccak256("VERIFIER");
+    bytes32 public constant VERIFIER = keccak256("VERIFIER");
 
     struct Record {
         bytes32 digest;
@@ -22,48 +21,138 @@ contract AnchorRegistry {
     mapping(bytes32 => mapping(address => bool)) private _roles;
     mapping(bytes32 => Record) private _records;
 
-    event RoleGranted(bytes32 indexed role, address indexed account, address indexed by);
-    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed by);
-    event RecordAnchored(bytes32 indexed recordId, bytes32 indexed digest, address indexed submitter, string cid);
-    event RecordVerified(bytes32 indexed recordId, address indexed verifier, uint64 at);
+    uint256 public adminCount;
+
+    event RoleGranted(
+        bytes32 indexed role,
+        address indexed account,
+        address indexed by
+    );
+
+    event RoleRevoked(
+        bytes32 indexed role,
+        address indexed account,
+        address indexed by
+    );
+
+    event RecordAnchored(
+        bytes32 indexed recordId,
+        bytes32 indexed digest,
+        address indexed submitter,
+        string cid
+    );
+
+    event RecordVerified(
+        bytes32 indexed recordId,
+        address indexed verifier,
+        uint64 at
+    );
 
     error NotAuthorized(bytes32 role);
     error EmptyDigest();
+    error EmptyRecordId();
+    error EmptyCid();
+    error ZeroAddress();
+    error InvalidRole();
+    error LastAdmin();
     error AlreadyAnchored();
     error UnknownRecord();
     error AlreadyVerified();
     error SelfVerification();
 
     modifier onlyRole(bytes32 role) {
-        if (!_roles[role][msg.sender]) revert NotAuthorized(role);
+        if (!_roles[role][msg.sender]) {
+            revert NotAuthorized(role);
+        }
         _;
     }
 
     constructor() {
         _roles[ADMIN][msg.sender] = true;
+        adminCount = 1;
+
         emit RoleGranted(ADMIN, msg.sender, msg.sender);
     }
 
-    function hasRole(bytes32 role, address account) external view returns (bool) {
+    function hasRole(
+        bytes32 role,
+        address account
+    ) external view returns (bool) {
         return _roles[role][account];
     }
 
-    function grantRole(bytes32 role, address account) external onlyRole(ADMIN) {
-        _roles[role][account] = true;
-        emit RoleGranted(role, account, msg.sender);
+    function _validateRole(bytes32 role) internal pure {
+        if (
+            role != ADMIN &&
+            role != SUBMITTER &&
+            role != VERIFIER
+        ) {
+            revert InvalidRole();
+        }
     }
 
-    function revokeRole(bytes32 role, address account) external onlyRole(ADMIN) {
-        _roles[role][account] = false;
-        emit RoleRevoked(role, account, msg.sender);
+    function grantRole(
+        bytes32 role,
+        address account
+    ) external onlyRole(ADMIN) {
+        _validateRole(role);
+
+        if (account == address(0)) {
+            revert ZeroAddress();
+        }
+
+        if (!_roles[role][account]) {
+            _roles[role][account] = true;
+
+            if (role == ADMIN) {
+                adminCount += 1;
+            }
+
+            emit RoleGranted(role, account, msg.sender);
+        }
     }
 
-    function anchor(bytes32 recordId, bytes32 digest, string calldata cid)
-        external
-        onlyRole(SUBMITTER)
-    {
-        if (digest == bytes32(0)) revert EmptyDigest();
-        if (_records[recordId].submittedAt != 0) revert AlreadyAnchored();
+    function revokeRole(
+        bytes32 role,
+        address account
+    ) external onlyRole(ADMIN) {
+        _validateRole(role);
+
+        if (_roles[role][account]) {
+            if (role == ADMIN) {
+                if (adminCount <= 1) {
+                    revert LastAdmin();
+                }
+
+                adminCount -= 1;
+            }
+
+            _roles[role][account] = false;
+
+            emit RoleRevoked(role, account, msg.sender);
+        }
+    }
+
+    function anchor(
+        bytes32 recordId,
+        bytes32 digest,
+        string calldata cid
+    ) external onlyRole(SUBMITTER) {
+        if (recordId == bytes32(0)) {
+            revert EmptyRecordId();
+        }
+
+        if (digest == bytes32(0)) {
+            revert EmptyDigest();
+        }
+
+        if (bytes(cid).length == 0) {
+            revert EmptyCid();
+        }
+
+        if (_records[recordId].submittedAt != 0) {
+            revert AlreadyAnchored();
+        }
 
         _records[recordId] = Record({
             digest: digest,
@@ -77,19 +166,36 @@ contract AnchorRegistry {
         emit RecordAnchored(recordId, digest, msg.sender, cid);
     }
 
-    function verify(bytes32 recordId) external onlyRole(VERIFIER) {
+    function verify(
+        bytes32 recordId
+    ) external onlyRole(VERIFIER) {
         Record storage r = _records[recordId];
-        if (r.submittedAt == 0) revert UnknownRecord();
-        if (r.verifiedAt != 0) revert AlreadyVerified();
-        if (r.submitter == msg.sender) revert SelfVerification();
+
+        if (r.submittedAt == 0) {
+            revert UnknownRecord();
+        }
+
+        if (r.verifiedAt != 0) {
+            revert AlreadyVerified();
+        }
+
+        if (r.submitter == msg.sender) {
+            revert SelfVerification();
+        }
 
         r.verifier = msg.sender;
         r.verifiedAt = uint64(block.timestamp);
 
-        emit RecordVerified(recordId, msg.sender, uint64(block.timestamp));
+        emit RecordVerified(
+            recordId,
+            msg.sender,
+            uint64(block.timestamp)
+        );
     }
 
-    function get(bytes32 recordId) external view returns (Record memory) {
+    function get(
+        bytes32 recordId
+    ) external view returns (Record memory) {
         return _records[recordId];
     }
 }
